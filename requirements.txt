@@ -1,0 +1,32 @@
+# Data & Analysis
+yfinance
+pandas
+numpy
+requests
+python-dotenv
+
+# Deep Learning & AI
+torch
+transformers>=4.35.0
+datasets
+accelerate
+sentencepiece
+protobuf
+
+# Kronos Dependencies
+# Note: Kronos will be loaded from HuggingFace Hub
+# Model: Kronos-AI/Kronos-Large or Kronos-AI/Kronos-Base
+
+# Reinforcement Learning
+finrl
+stable-baselines3
+gymnasium
+ray[tune]
+
+# Trading & Backtesting
+vectorbt
+ta-lib
+
+# Optional: Live Trading
+kiteconnect
+python-telegram-bot
