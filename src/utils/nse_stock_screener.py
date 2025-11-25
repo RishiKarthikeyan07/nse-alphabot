@@ -19,7 +19,7 @@ RSI_RANGE = (55, 70)  # Bullish momentum
 MIN_VOLUME_SURGE = 1.5  # 1.5x average volume
 
 # Import dynamic NSE stock fetcher
-from fetch_all_nse_stocks import get_all_nse_stocks
+from utils.fetch_all_nse_stocks import get_all_nse_stocks
 
 # NSE Stock Universe - Will be populated dynamically
 NSE_STOCKS = []
