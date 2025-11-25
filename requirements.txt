@@ -27,6 +27,7 @@ ray[tune]
 vectorbt
 ta-lib
 
-# Optional: Live Trading
+# Trading APIs
+neostox
 kiteconnect
 python-telegram-bot
