@@ -28,6 +28,5 @@ vectorbt
 ta-lib
 
 # Trading APIs
-neostox
 kiteconnect
 python-telegram-bot
