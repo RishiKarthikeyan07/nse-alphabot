@@ -87,27 +87,27 @@ You Review & Execute Trades
    - Break of Structure
    - Change of Character
 
-3. **Advanced Technical (10%)**
+3. **AI/ML Models (30%)**
+   - **Kronos AI (70% of AI weight = 21% total)**
+     - NeoQuasar/Kronos-small (24.7M params)
+     - Trained on 45+ global exchanges
+     - Binary Spherical Quantization (BSQ)
+     - 7-day price forecasts
+     - **NO FALLBACK**
+   - **DRL Agent (30% of AI weight = 9% total)**
+     - SAC (Soft Actor-Critic)
+     - Trained on 24,359 data points
+     - Optimal trade decisions
+
+4. **Advanced Technical (10%)**
    - Volume Profile (POC, Value Area)
    - Fibonacci levels
    - MACD/RSI divergences
    - Support/Resistance
 
-4. **Sentiment Analysis (10%)**
+5. **Sentiment Analysis (10%)**
    - Finnhub news sentiment
    - Technical momentum
-
-5. **Official Kronos AI (21%)**
-   - NeoQuasar/Kronos-small (24.7M params)
-   - Trained on 45+ global exchanges
-   - Binary Spherical Quantization (BSQ)
-   - 7-day price forecasts
-   - **NO FALLBACK**
-
-6. **DRL Agent (9%)**
-   - SAC (Soft Actor-Critic)
-   - Trained on 24,359 data points
-   - Optimal trade decisions
 
 ---
 

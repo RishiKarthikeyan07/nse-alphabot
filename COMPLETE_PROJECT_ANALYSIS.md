@@ -125,12 +125,11 @@ Analysis: TA-Lib, custom indicators
 
 | Component | Weight | Purpose | Files |
 |-----------|--------|---------|-------|
-| **Multi-Timeframe** | 35% | Trend analysis across 5 timeframes | `multi_timeframe_analyzer.py` |
+| **Multi-Timeframe** | 25% | Trend analysis across 5 timeframes | `multi_timeframe_analyzer.py` |
 | **Smart Money Concepts** | 25% | Institutional patterns | `smc_analyzer.py` |
-| **Advanced Technical** | 20% | Volume, Fibonacci, Divergence | `advanced_technical.py` |
+| **Advanced Technical** | 10% | Volume, Fibonacci, Divergence | `advanced_technical.py` |
 | **Sentiment** | 10% | News + Technical momentum | `sentiment_analyzer.py` |
-| **Base Technical** | 5% | RSI, MACD, MA | Built into bot |
-| **AI/ML** | 5% | Kronos + DRL predictions | `kronos_predictor.py` + DRL |
+| **AI/ML** | 30% | Kronos (70%) + DRL (30%) predictions | `kronos_predictor.py` + DRL |
 
 ---
 
