@@ -45,8 +45,8 @@ MAX_POSITIONS = 8
 MIN_CONFIDENCE = 0.75  # 75% - Higher threshold for ultimate bot
 MIN_EXPECTED_RETURN = 2.5  # 2.5%
 
-# Import NSE stock screener
-from utils.nse_stock_screener import screen_nse_stocks
+# Import PKScreener integration (replaces old screener)
+from utils.pkscreener_integration import screen_nse_stocks
 
 # Get screened stocks dynamically (will be populated at runtime)
 ELITE_STOCKS = []
@@ -344,31 +344,30 @@ def run_ultimate_bot():
     print("="*100)
     print()
     
-    # STEP 1: Screen ALL NSE stocks for high volume & momentum
-    print("📊 STEP 1: SCREENING ALL NSE STOCKS")
+    # STEP 1: Screen ALL NSE stocks using PKScreener
+    print("📊 STEP 1: PKSCREENER - ADVANCED STOCK SCREENING")
     print("="*100)
-    print("Filtering from 200+ NSE stocks based on:")
-    print("  • High volume (>10 lakh shares/day)")
-    print("  • High momentum (RSI 55-70)")
-    print("  • Price above 50-day & 200-day MA")
-    print("  • MACD bullish crossover")
-    print("  • Volume surge (1.5x average)")
+    print("🔍 PKScreener analyzing NSE stocks with:")
+    print("  • Breakout Probability (70-90% accuracy)")
+    print("  • Consolidation Detection (coiling patterns)")
+    print("  • Chart Patterns (flags, wedges, triangles)")
+    print("  • Trendline Steepness Analysis")
+    print("  • Relative Volume (vs 20-day MA)")
+    print("  • RSI Divergence Detection")
+    print("  • Momentum & Price Action")
     print("="*100)
     print()
     
-    # Run screener to get top 50 stocks
-    screened_stocks = screen_nse_stocks(max_stocks=50, verbose=True)
+    # Run PKScreener to get top 50 stocks
+    ELITE_STOCKS = screen_nse_stocks(max_stocks=50, min_volume=1000000, min_price=100, max_price=10000)
     
-    if not screened_stocks:
+    if not ELITE_STOCKS:
         print()
         print("="*100)
-        print("⚠️  NO STOCKS PASSED SCREENING")
+        print("⚠️  NO STOCKS PASSED PKSCREENER FILTERS")
         print("Market conditions may not be favorable for swing trading today.")
         print("="*100)
         return
-    
-    # Extract tickers
-    ELITE_STOCKS = [s['ticker'] for s in screened_stocks]
     
     print()
     print("="*100)
