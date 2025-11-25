@@ -1,0 +1,17 @@
+# Nixpacks configuration for Railway
+# Optimized for Python ML/AI applications
+
+[phases.setup]
+nixPkgs = ["python310", "gcc", "g++"]
+
+[phases.install]
+cmds = [
+    "pip install --upgrade pip",
+    "pip install -r requirements.txt"
+]
+
+[phases.build]
+cmds = ["echo 'Build complete'"]
+
+[start]
+cmd = "python3 automated_paper_trading.py"

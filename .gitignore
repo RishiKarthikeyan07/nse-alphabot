@@ -21,7 +21,6 @@ wheels/
 *.egg
 
 # Virtual Environment
-.venv/
 venv/
 ENV/
 env/
@@ -37,38 +36,27 @@ env/
 .DS_Store
 Thumbs.db
 
-# Models (large files)
-models/*.pth
-models/*.zip
-models/*.pkl
-
-# Data
-data/
-*.csv
-*.json
-
-# Logs
-logs/
+# Project Specific
 *.log
+paper_trading_log.json
+*.zip
+models/*.zip
+!models/.gitkeep
 
-# Backtest Results
-backtest_results/
-evaluation_reports/
-metrics/
-
-# API Keys (NEVER COMMIT)
-config.py
-secrets.py
+# Environment variables
 .env
+.env.local
 
 # Jupyter Notebooks
 .ipynb_checkpoints/
 *.ipynb
 
-# Testing
-.pytest_cache/
-.coverage
-htmlcov/
+# Data files
+data/
+*.csv
+*.xlsx
 
-# Archive
-archive/
+# Temporary files
+tmp/
+temp/
+*.tmp
