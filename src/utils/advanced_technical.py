@@ -364,6 +364,15 @@ class AdvancedTechnicalAnalyzer:
             'current_price': current_price
         }
     
+    def analyze(self) -> Dict:
+        """
+        Perform complete advanced technical analysis
+        
+        Returns:
+            Dict with all advanced indicators and overall score
+        """
+        return self.analyze_advanced_technical()
+    
     def analyze_advanced_technical(self) -> Dict:
         """
         Perform complete advanced technical analysis

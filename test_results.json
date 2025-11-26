@@ -1,0 +1,36 @@
+{
+  "timestamp": "2025-11-26 18:13:58",
+  "tests_run": 18,
+  "tests_passed": 11,
+  "tests_failed": 7,
+  "failures": [
+    {
+      "test": "Advanced technical analysis",
+      "error": "'AdvancedTechnicalAnalyzer' object has no attribute 'analyze'"
+    },
+    {
+      "test": "Sentiment analysis",
+      "error": "get_hybrid_sentiment() missing 1 required positional argument: 'df'"
+    },
+    {
+      "test": "DRL agent loading",
+      "error": "No DRL agent found"
+    },
+    {
+      "test": "DRL agent prediction",
+      "error": "[Errno 2] No such file or directory: 'models/sac_nse_10y_final.zip.zip'"
+    },
+    {
+      "test": "Complete bot workflow",
+      "error": "'AdvancedTechnicalAnalyzer' object has no attribute 'analyze'"
+    },
+    {
+      "test": "Configuration files",
+      "error": "einops not in requirements"
+    },
+    {
+      "test": "Model files",
+      "error": "No DRL agent found"
+    }
+  ]
+}

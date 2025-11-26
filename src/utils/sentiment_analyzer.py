@@ -168,9 +168,13 @@ def get_technical_sentiment(df):
         return 0.5
 
 
-def get_hybrid_sentiment(ticker, df):
+def get_hybrid_sentiment(ticker, df=None):
     """
     Hybrid sentiment combining Finnhub news + technical indicators
+    
+    Args:
+        ticker: Stock ticker (e.g., 'RELIANCE.NS')
+        df: Optional DataFrame with OHLCV data. If None, will fetch internally.
     
     Weights:
     - 50% News sentiment (Finnhub)
@@ -182,6 +186,46 @@ def get_hybrid_sentiment(ticker, df):
         # Get news sentiment from Finnhub
         news_sentiment = get_finnhub_news_sentiment(ticker)
         
+        # If df not provided, fetch it
+        if df is None:
+            import yfinance as yf
+            df = yf.download(ticker, period='1mo', interval='1d',
+                           auto_adjust=True, progress=False)
+            
+            if df.empty:
+                # No data, return news sentiment only
+                return news_sentiment
+            
+            # Handle MultiIndex columns
+            if hasattr(df.columns, 'levels'):
+                df.columns = df.columns.get_level_values(0)
+            
+            # Calculate required indicators
+            import pandas as pd
+            
+            # RSI
+            delta = df['Close'].diff()
+            gain = delta.clip(lower=0).rolling(14).mean()
+            loss = (-delta.clip(upper=0)).rolling(14).mean()
+            rs = gain / loss
+            df['rsi'] = 100 - (100 / (1 + rs))
+            
+            # MACD
+            ema_12 = df['Close'].ewm(span=12).mean()
+            ema_26 = df['Close'].ewm(span=26).mean()
+            df['macd'] = ema_12 - ema_26
+            df['macd_signal'] = df['macd'].ewm(span=9).mean()
+            
+            # Volume ratio
+            df['volume_ma'] = df['Volume'].rolling(20).mean()
+            df['volume_ratio'] = df['Volume'] / df['volume_ma']
+            
+            df = df.dropna()
+            
+            if len(df) < 5:
+                # Not enough data, return news sentiment only
+                return news_sentiment
+        
         # Get technical sentiment
         technical_sentiment = get_technical_sentiment(df)
         
@@ -191,8 +235,11 @@ def get_hybrid_sentiment(ticker, df):
         return round(hybrid_sentiment, 2)
         
     except Exception as e:
-        # Fallback to technical only
-        return get_technical_sentiment(df)
+        # Fallback to news sentiment only
+        try:
+            return get_finnhub_news_sentiment(ticker)
+        except:
+            return 0.5
 
 
 # For backward compatibility
