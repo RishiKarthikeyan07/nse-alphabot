@@ -12,10 +12,11 @@ datasets
 accelerate
 sentencepiece
 protobuf
+einops
 
 # Kronos Dependencies
 # Note: Kronos will be loaded from HuggingFace Hub
-# Model: Kronos-AI/Kronos-Large or Kronos-AI/Kronos-Base
+# Model: NeoQuasar/Kronos-small
 
 # Reinforcement Learning
 finrl
@@ -29,4 +30,3 @@ ta-lib
 
 # Trading APIs
 kiteconnect
-python-telegram-bot
