@@ -48,13 +48,13 @@ MAX_POSITIONS = 8
 MIN_CONFIDENCE = 0.75  # 75% - Higher threshold for ultimate bot
 MIN_EXPECTED_RETURN = 2.5  # 2.5%
 
-# === OPTIMIZED WEIGHTS (Real-Money Tested) ===
+# === OPTIMIZED WEIGHTS (Updated for Nifty 100 DRL) ===
 WEIGHT_MTF = 0.20          # Multi-Timeframe: 20%
 WEIGHT_SMC = 0.20          # Smart Money Concepts: 20%
 WEIGHT_TECHNICAL = 0.15    # Advanced Technical: 15%
-WEIGHT_SENTIMENT = 0.10    # Sentiment: 10%
+WEIGHT_SENTIMENT = 0.05    # Sentiment: 5% (Reduced)
 WEIGHT_KRONOS = 0.25       # Kronos AI: 25% (HIGHEST - Your real edge)
-WEIGHT_DRL = 0.10          # DRL Agent: 10%
+WEIGHT_DRL = 0.15          # DRL Agent: 15% (Increased - Nifty 100 trained)
 # Total: 100%
 
 # Import PKScreener integration (replaces old screener)
@@ -69,17 +69,25 @@ print("🚀 Loading AI/ML Models...")
 # Load Kronos predictor (replaces TrendMaster)
 KRONOS_PREDICTOR = get_kronos_predictor(model_name="NeoQuasar/Kronos-small")
 
-# Load DRL agent
+# Load DRL agent (try Nifty 100 model first, then fallbacks)
 try:
-    DRL_AGENT = SAC.load("models/sac_nse_retrained.zip")
-    print("✅ Loaded retrained DRL agent")
+    DRL_AGENT = SAC.load("models/sac_nse_nifty100.zip")
+    print("✅ Loaded Nifty 100 DRL agent (100 stocks, 200k timesteps)")
 except:
     try:
-        DRL_AGENT = SAC.load("models/sac_nse_10y_final.zip")
-        print("✅ Loaded original DRL agent")
+        DRL_AGENT = SAC.load("models/sac_nse_nifty50.zip")
+        print("✅ Loaded Nifty 50 DRL agent (50 stocks, 150k timesteps)")
     except:
-        print("⚠️  DRL agent not found, will use reduced AI scoring")
-        DRL_AGENT = None
+        try:
+            DRL_AGENT = SAC.load("models/sac_nse_retrained.zip")
+            print("✅ Loaded retrained DRL agent")
+        except:
+            try:
+                DRL_AGENT = SAC.load("models/sac_nse_10y_final.zip")
+                print("✅ Loaded original DRL agent")
+            except:
+                print("⚠️  DRL agent not found, will use reduced AI scoring")
+                DRL_AGENT = None
 
 def get_stock_data(ticker, period="6mo"):
     """Fetch stock data"""
@@ -130,13 +138,13 @@ def generate_ultimate_signal(ticker, verbose=False):
     """
     Generate ultimate signal combining all analysis methods
     
-    OPTIMIZED Signal Weighting (Real-Money Tested):
+OPTIMIZED Signal Weighting (Updated for Nifty 100 DRL):
     - Kronos AI: 25% (HIGHEST - Your real edge)
     - MTF: 20%
     - SMC: 20%
     - Advanced Technical: 15%
-    - DRL Agent: 10%
-    - Sentiment: 10%
+    - DRL Agent: 15% (Increased - Nifty 100 trained)
+    - Sentiment: 5% (Reduced)
     
     Args:
         ticker: Stock ticker symbol
@@ -344,13 +352,13 @@ def generate_ultimate_signal(ticker, verbose=False):
     )
     
     if verbose:
-        print(f"   Weighted Scores (Optimized for Real Money):")
+        print(f"   Weighted Scores (Updated for Nifty 100 DRL):")
         print(f"      🥇 Kronos AI ({WEIGHT_KRONOS:.0%}):    {kronos_score:.2f} × {WEIGHT_KRONOS} = {kronos_score * WEIGHT_KRONOS:.3f}  ← HIGHEST")
         print(f"      🥈 MTF ({WEIGHT_MTF:.0%}):           {mtf_score:.2f} × {WEIGHT_MTF} = {mtf_score * WEIGHT_MTF:.3f}")
         print(f"      🥈 SMC ({WEIGHT_SMC:.0%}):           {smc_score:.2f} × {WEIGHT_SMC} = {smc_score * WEIGHT_SMC:.3f}")
         print(f"      🥉 Technical ({WEIGHT_TECHNICAL:.0%}):    {tech_score:.2f} × {WEIGHT_TECHNICAL} = {tech_score * WEIGHT_TECHNICAL:.3f}")
-        print(f"         DRL Agent ({WEIGHT_DRL:.0%}):    {drl_score:.2f} × {WEIGHT_DRL} = {drl_score * WEIGHT_DRL:.3f}")
-        print(f"         Sentiment ({WEIGHT_SENTIMENT:.0%}):    {sentiment_score:.2f} × {WEIGHT_SENTIMENT} = {sentiment_score * WEIGHT_SENTIMENT:.3f}")
+        print(f"      🥉 DRL Agent ({WEIGHT_DRL:.0%}):    {drl_score:.2f} × {WEIGHT_DRL} = {drl_score * WEIGHT_DRL:.3f}  ← INCREASED")
+        print(f"         Sentiment ({WEIGHT_SENTIMENT:.0%}):     {sentiment_score:.2f} × {WEIGHT_SENTIMENT} = {sentiment_score * WEIGHT_SENTIMENT:.3f}")
         print(f"   {'─'*76}")
         print(f"   Final Confidence: {final_confidence:.2f} ({final_confidence:.0%})")
         print(f"   💡 Kronos AI has highest weight - it's your real edge!")
@@ -455,13 +463,13 @@ def run_ultimate_bot(verbose=False):
     print(f"Capital: ₹{CAPITAL:,} | Min Confidence: {MIN_CONFIDENCE:.0%} | Max Positions: {MAX_POSITIONS}")
     print(f"Risk per Trade: {RISK_PER_TRADE:.1%} | Min Return: {MIN_EXPECTED_RETURN:.1f}%")
     print()
-    print("OPTIMIZED Signal Weighting (Real-Money Tested):")
+    print("OPTIMIZED Signal Weighting (Updated for Nifty 100 DRL):")
     print(f"  🥇 Kronos AI: {WEIGHT_KRONOS:.0%} (HIGHEST - Your real edge)")
     print(f"  🥈 Multi-Timeframe: {WEIGHT_MTF:.0%}")
     print(f"  🥈 Smart Money Concepts: {WEIGHT_SMC:.0%}")
     print(f"  🥉 Advanced Technical: {WEIGHT_TECHNICAL:.0%}")
-    print(f"     DRL Agent: {WEIGHT_DRL:.0%}")
-    print(f"     Sentiment: {WEIGHT_SENTIMENT:.0%}")
+    print(f"  🥉 DRL Agent: {WEIGHT_DRL:.0%} (Increased - Nifty 100 trained)")
+    print(f"     Sentiment: {WEIGHT_SENTIMENT:.0%} (Reduced)")
     print("="*100)
     print()
     

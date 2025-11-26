@@ -1,32 +1,39 @@
-# Data & Analysis
-yfinance
-pandas
-numpy
-requests
-python-dotenv
+# Core dependencies
+numpy>=1.21.0
+pandas>=1.3.0
+scipy>=1.7.0
+scikit-learn>=1.0.0
+matplotlib>=3.4.0
+seaborn>=0.11.0
 
-# Deep Learning & AI
-torch
-transformers>=4.35.0
-datasets
-accelerate
-sentencepiece
-protobuf
-einops
+# Machine Learning & AI
+torch>=1.11.0
+transformers>=4.15.0
+stable-baselines3>=1.5.0
+gymnasium>=0.26.0
 
-# Kronos Dependencies
-# Note: Kronos will be loaded from HuggingFace Hub
-# Model: NeoQuasar/Kronos-small
+# Data & Finance
+yfinance>=0.1.70
+ta>=0.10.1
+requests>=2.25.0
 
-# Reinforcement Learning
-finrl
-stable-baselines3
-gymnasium
-ray[tune]
-
-# Trading & Backtesting
-vectorbt
-ta-lib
+# Web & API
+flask>=2.0.0
+fastapi>=0.70.0
+uvicorn>=0.15.0
 
 # Trading APIs
-kiteconnect
+kiteconnect>=4.2.0  # Zerodha Kite API
+
+# Web scraping (for authentication)
+selenium>=4.1.0
+webdriver-manager>=3.5.0
+
+# Utilities
+python-dotenv>=0.19.0
+schedule>=1.1.0
+tqdm>=4.62.0
+
+# Optional for development
+jupyter>=1.0.0
+ipykernel>=6.0.0

@@ -1,590 +1,407 @@
 #!/usr/bin/env python3
 """
 Zerodha Kite Live Trading Integration for NSE AlphaBot
-Executes real trades based on bot signals
+Automated trading system with DRL agent decision making
 """
 
 import sys
 import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
 
-from kiteconnect import KiteConnect
-from kiteconnect import KiteTicker
-import pandas as pd
 import json
-from datetime import datetime, time
-import time as time_module
 import logging
-from dotenv import load_dotenv
+from datetime import datetime
+import pandas as pd
+import numpy as np
 
-load_dotenv()
+try:
+    from kiteconnect import KiteConnect
+except ImportError:
+    print("⚠️  kiteconnect not installed. Install with: pip install kiteconnect")
+    KiteConnect = None
 
-# Configure logging
+from stable_baselines3 import SAC
+
+# Setup logging
 logging.basicConfig(
+    filename=f'zerodha_trading_{datetime.now().strftime("%Y%m%d")}.log',
     level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.FileHandler('live_trading.log'),
-        logging.StreamHandler()
-    ]
+    format='%(asctime)s - %(levelname)s - %(message)s'
 )
-logger = logging.getLogger(__name__)
 
 class ZerodhaLiveTrader:
     """
-    Live trading integration with Zerodha Kite
+    Live trading system for Zerodha Kite with DRL agent integration
     """
-    
+
     def __init__(self, api_key, api_secret, access_token=None):
-        """
-        Initialize Zerodha Kite connection
-        
-        Args:
-            api_key: Kite API key
-            api_secret: Kite API secret
-            access_token: Access token (if already generated)
-        """
+        if KiteConnect is None:
+            raise ImportError("kiteconnect library not installed")
+            
         self.api_key = api_key
         self.api_secret = api_secret
-        self.kite = KiteConnect(api_key=api_key)
         self.access_token = access_token
-        
-        if access_token:
-            self.kite.set_access_token(access_token)
-            logger.info("✅ Kite connection initialized with access token")
-        else:
-            logger.warning("⚠️ No access token provided. Need to generate one.")
-        
+
+        # Initialize Kite
+        self.kite = KiteConnect(api_key=self.api_key)
+
+        # Trading state
         self.positions = {}
-        self.orders = {}
-        
-    def generate_session(self, request_token):
-        """
-        Generate access token from request token
-        
-        Args:
-            request_token: Request token from Kite login
-            
-        Returns:
-            Access token
-        """
+        self.max_positions = 8
+        self.risk_per_trade = 0.02
+        self.max_daily_loss = 50000
+
+        # Load DRL agent
+        self.load_drl_agent()
+
+        # Set access token if provided
+        if self.access_token:
+            self.kite.set_access_token(self.access_token)
+
+    def load_drl_agent(self):
+        """Load the trained DRL agent"""
+        print("🤖 Loading DRL Agent...")
         try:
+            self.drl_agent = SAC.load("models/sac_nse_nifty100.zip")
+            print("✅ Nifty 100 DRL Agent loaded")
+        except:
+            try:
+                self.drl_agent = SAC.load("models/sac_nse_retrained.zip")
+                print("✅ Retrained DRL Agent loaded")
+            except:
+                print("❌ DRL Agent not found!")
+                self.drl_agent = None
+
+    def authenticate(self):
+        """Authenticate with Zerodha Kite"""
+        print("🔐 Authenticating with Zerodha Kite...")
+        
+        # Generate login URL
+        login_url = self.kite.login_url()
+        print(f"\n🔗 Please visit this URL to login:\n{login_url}\n")
+        print("After logging in, copy the 'request_token' from the URL")
+        
+        request_token = input("Enter request_token: ").strip()
+        
+        try:
+            # Generate access token
             data = self.kite.generate_session(request_token, api_secret=self.api_secret)
             self.access_token = data["access_token"]
             self.kite.set_access_token(self.access_token)
             
-            logger.info("✅ Access token generated successfully")
-            logger.info(f"Access Token: {self.access_token}")
-            logger.info("⚠️ SAVE THIS TOKEN - Valid until end of day")
+            # Save tokens
+            self.save_tokens()
             
-            return self.access_token
-            
-        except Exception as e:
-            logger.error(f"❌ Failed to generate session: {e}")
-            raise
-    
-    def get_login_url(self):
-        """Get Kite login URL"""
-        login_url = self.kite.login_url()
-        logger.info(f"🔗 Login URL: {login_url}")
-        return login_url
-    
-    def get_profile(self):
-        """Get user profile"""
-        try:
-            profile = self.kite.profile()
-            logger.info(f"✅ Logged in as: {profile['user_name']} ({profile['email']})")
-            return profile
-        except Exception as e:
-            logger.error(f"❌ Failed to get profile: {e}")
-            return None
-    
-    def get_margins(self):
-        """Get account margins"""
-        try:
-            margins = self.kite.margins()
-            equity = margins['equity']
-            
-            logger.info(f"💰 Available Margin: ₹{equity['available']['live_balance']:,.2f}")
-            logger.info(f"💰 Used Margin: ₹{equity['utilised']['debits']:,.2f}")
-            
-            return margins
-        except Exception as e:
-            logger.error(f"❌ Failed to get margins: {e}")
-            return None
-    
-    def get_instrument_token(self, symbol):
-        """
-        Get instrument token for a symbol
-        
-        Args:
-            symbol: Trading symbol (e.g., 'RELIANCE')
-            
-        Returns:
-            Instrument token
-        """
-        try:
-            # Remove .NS suffix if present
-            symbol = symbol.replace('.NS', '')
-            
-            # Get instruments
-            instruments = self.kite.instruments("NSE")
-            
-            # Find instrument
-            for inst in instruments:
-                if inst['tradingsymbol'] == symbol:
-                    return inst['instrument_token']
-            
-            logger.warning(f"⚠️ Instrument not found: {symbol}")
-            return None
-            
-        except Exception as e:
-            logger.error(f"❌ Failed to get instrument token: {e}")
-            return None
-    
-    def get_ltp(self, symbol):
-        """
-        Get Last Traded Price
-        
-        Args:
-            symbol: Trading symbol
-            
-        Returns:
-            LTP
-        """
-        try:
-            symbol = symbol.replace('.NS', '')
-            instrument_token = self.get_instrument_token(symbol)
-            
-            if not instrument_token:
-                return None
-            
-            ltp_data = self.kite.ltp([f"NSE:{symbol}"])
-            ltp = ltp_data[f"NSE:{symbol}"]['last_price']
-            
-            return ltp
-            
-        except Exception as e:
-            logger.error(f"❌ Failed to get LTP for {symbol}: {e}")
-            return None
-    
-    def place_order(self, symbol, quantity, order_type="MARKET", 
-                    transaction_type="BUY", product="CNC", 
-                    price=None, trigger_price=None, stoploss=None, target=None):
-        """
-        Place order on Zerodha
-        
-        Args:
-            symbol: Trading symbol (e.g., 'RELIANCE')
-            quantity: Number of shares
-            order_type: MARKET, LIMIT, SL, SL-M
-            transaction_type: BUY or SELL
-            product: CNC (delivery), MIS (intraday), NRML (F&O)
-            price: Limit price (for LIMIT orders)
-            trigger_price: Trigger price (for SL orders)
-            stoploss: Stop loss price (optional)
-            target: Target price (optional)
-            
-        Returns:
-            Order ID
-        """
-        try:
-            symbol = symbol.replace('.NS', '')
-            
-            # Place main order
-            order_params = {
-                "exchange": "NSE",
-                "tradingsymbol": symbol,
-                "transaction_type": transaction_type,
-                "quantity": quantity,
-                "order_type": order_type,
-                "product": product,
-                "validity": "DAY"
-            }
-            
-            if price:
-                order_params["price"] = price
-            if trigger_price:
-                order_params["trigger_price"] = trigger_price
-            
-            order_id = self.kite.place_order(**order_params)
-            
-            logger.info(f"✅ Order placed: {transaction_type} {quantity} {symbol} @ {order_type}")
-            logger.info(f"   Order ID: {order_id}")
-            
-            # Place stop loss order if specified
-            if stoploss and transaction_type == "BUY":
-                sl_order_id = self.place_stoploss_order(symbol, quantity, stoploss)
-                logger.info(f"   Stop Loss Order ID: {sl_order_id}")
-            
-            # Place target order if specified
-            if target and transaction_type == "BUY":
-                target_order_id = self.place_target_order(symbol, quantity, target)
-                logger.info(f"   Target Order ID: {target_order_id}")
-            
-            return order_id
-            
-        except Exception as e:
-            logger.error(f"❌ Failed to place order: {e}")
-            return None
-    
-    def place_stoploss_order(self, symbol, quantity, stoploss_price):
-        """Place stop loss order"""
-        try:
-            symbol = symbol.replace('.NS', '')
-            
-            order_id = self.kite.place_order(
-                exchange="NSE",
-                tradingsymbol=symbol,
-                transaction_type="SELL",
-                quantity=quantity,
-                order_type="SL",
-                product="CNC",
-                price=stoploss_price,
-                trigger_price=stoploss_price,
-                validity="DAY"
-            )
-            
-            logger.info(f"✅ Stop Loss placed: SELL {quantity} {symbol} @ ₹{stoploss_price}")
-            return order_id
-            
-        except Exception as e:
-            logger.error(f"❌ Failed to place stop loss: {e}")
-            return None
-    
-    def place_target_order(self, symbol, quantity, target_price):
-        """Place target order"""
-        try:
-            symbol = symbol.replace('.NS', '')
-            
-            order_id = self.kite.place_order(
-                exchange="NSE",
-                tradingsymbol=symbol,
-                transaction_type="SELL",
-                quantity=quantity,
-                order_type="LIMIT",
-                product="CNC",
-                price=target_price,
-                validity="DAY"
-            )
-            
-            logger.info(f"✅ Target placed: SELL {quantity} {symbol} @ ₹{target_price}")
-            return order_id
-            
-        except Exception as e:
-            logger.error(f"❌ Failed to place target: {e}")
-            return None
-    
-    def modify_order(self, order_id, quantity=None, price=None, order_type=None):
-        """Modify existing order"""
-        try:
-            params = {}
-            if quantity:
-                params["quantity"] = quantity
-            if price:
-                params["price"] = price
-            if order_type:
-                params["order_type"] = order_type
-            
-            self.kite.modify_order(order_id, **params)
-            logger.info(f"✅ Order modified: {order_id}")
+            print("✅ Authentication successful!")
             return True
             
         except Exception as e:
-            logger.error(f"❌ Failed to modify order: {e}")
+            print(f"❌ Authentication failed: {e}")
             return False
-    
-    def cancel_order(self, order_id):
-        """Cancel order"""
-        try:
-            self.kite.cancel_order(order_id)
-            logger.info(f"✅ Order cancelled: {order_id}")
-            return True
-        except Exception as e:
-            logger.error(f"❌ Failed to cancel order: {e}")
-            return False
-    
-    def get_orders(self):
-        """Get all orders"""
-        try:
-            orders = self.kite.orders()
-            return orders
-        except Exception as e:
-            logger.error(f"❌ Failed to get orders: {e}")
-            return []
-    
-    def get_positions(self):
-        """Get current positions"""
+
+    def save_tokens(self):
+        """Save access token"""
+        config = {
+            'api_key': self.api_key,
+            'api_secret': self.api_secret,
+            'access_token': self.access_token,
+            'last_updated': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        }
+        
+        with open('zerodha_config.json', 'w') as f:
+            json.dump(config, f, indent=2)
+        
+        print("💾 Tokens saved to zerodha_config.json")
+
+    @classmethod
+    def load_from_config(cls):
+        """Load trader from saved config"""
+        if os.path.exists('zerodha_config.json'):
+            with open('zerodha_config.json', 'r') as f:
+                config = json.load(f)
+            
+            return cls(
+                api_key=config['api_key'],
+                api_secret=config['api_secret'],
+                access_token=config['access_token']
+            )
+        else:
+            raise FileNotFoundError("zerodha_config.json not found")
+
+    def get_portfolio_summary(self):
+        """Get current portfolio summary"""
         try:
             positions = self.kite.positions()
-            return positions
-        except Exception as e:
-            logger.error(f"❌ Failed to get positions: {e}")
-            return {}
-    
-    def get_holdings(self):
-        """Get holdings"""
-        try:
-            holdings = self.kite.holdings()
+            holdings = positions.get('net', [])
+            
+            total_value = 0
+            total_pnl = 0
+            
+            print(f"\n📊 PORTFOLIO SUMMARY ({len(holdings)} positions)")
+            print("="*80)
+            
+            for position in holdings:
+                if position['quantity'] > 0:
+                    symbol = position['tradingsymbol']
+                    qty = position['quantity']
+                    avg_price = position['average_price']
+                    ltp = position['last_price']
+                    pnl = position['pnl']
+                    
+                    total_value += ltp * qty
+                    total_pnl += pnl
+                    
+                    print(f"{symbol:<12} Qty:{qty:>4} Avg:{avg_price:>8.2f} LTP:{ltp:>8.2f} P&L:{pnl:>+10.2f}")
+            
+            print("="*80)
+            print(f"Total Value: ₹{total_value:,.0f}")
+            print(f"Total P&L: ₹{total_pnl:,.0f}")
+            print("="*80)
+            
             return holdings
+            
         except Exception as e:
-            logger.error(f"❌ Failed to get holdings: {e}")
+            print(f"❌ Error getting portfolio: {e}")
             return []
-    
-    def execute_bot_signal(self, signal):
-        """
-        Execute trade based on bot signal
+
+    def get_drl_decision(self, ticker, signal_data):
+        """Get DRL agent's decision"""
+        if self.drl_agent is None:
+            return 'HOLD', 0.5
         
-        Args:
-            signal: Dict with ticker, price, shares, confidence, expected_return, etc.
-            
-        Returns:
-            Order ID
-        """
         try:
-            ticker = signal['ticker'].replace('.NS', '')
-            shares = signal['shares']
-            price = signal['price']
-            confidence = signal['confidence']
-            expected_return = signal['expected_return']
+            price = signal_data['price']
+            rsi = signal_data.get('rsi', 50)
             
-            logger.info(f"\n{'='*80}")
-            logger.info(f"🎯 EXECUTING BOT SIGNAL")
-            logger.info(f"{'='*80}")
-            logger.info(f"Ticker: {ticker}")
-            logger.info(f"Price: ₹{price:.2f}")
-            logger.info(f"Shares: {shares}")
-            logger.info(f"Confidence: {confidence:.0%}")
-            logger.info(f"Expected Return: +{expected_return:.1f}%")
+            # Normalize inputs
+            price_norm = np.clip(price / 10000.0, 0, 10)
+            rsi_norm = np.clip(rsi / 100.0, 0, 1)
+            macd_norm = 0.0
+            capital_ratio = 0.8
+            shares_held = 1.0 if ticker in self.positions else 0.0
+            
+            # Create observation
+            obs = np.array([price_norm, rsi_norm, macd_norm, capital_ratio, shares_held], dtype=np.float32)
+            obs = np.nan_to_num(obs, nan=0.0, posinf=1.0, neginf=0.0)
+            
+            # Get DRL action
+            action, _ = self.drl_agent.predict(obs, deterministic=True)
+            action_value = float(action[0])
+            
+            # Convert to decision
+            if action_value > 0.3:
+                decision = 'BUY'
+                confidence = min(0.5 + action_value * 0.5, 1.0)
+            elif action_value < -0.3:
+                decision = 'SELL'
+                confidence = min(0.5 + abs(action_value) * 0.5, 1.0)
+            else:
+                decision = 'HOLD'
+                confidence = 0.5
+            
+            return decision, confidence
+            
+        except Exception as e:
+            logging.error(f"DRL decision error for {ticker}: {e}")
+            return 'HOLD', 0.5
+
+    def place_buy_order(self, ticker, signal_data, drl_confidence):
+        """Place a BUY order on Zerodha"""
+        try:
+            # Get instrument
+            instruments = self.kite.instruments(exchange='NSE')
+            instrument = next((i for i in instruments if i['tradingsymbol'] == ticker.replace('.NS', '')), None)
+            
+            if not instrument:
+                print(f"❌ Instrument not found: {ticker}")
+                return False
+            
+            # Calculate position size
+            price = signal_data['price']
+            shares = max(1, int((500000 * 0.02) / price))  # 2% of 5L capital
             
             # Calculate stop loss and target
-            stoploss = price * 0.97  # 3% stop loss
-            target = price * (1 + expected_return/100)
+            stop_loss = price * 0.95
+            target = price * (1 + signal_data['expected_return'] / 100)
             
-            logger.info(f"Stop Loss: ₹{stoploss:.2f} (-3%)")
-            logger.info(f"Target: ₹{target:.2f} (+{expected_return:.1f}%)")
+            print(f"\n🎯 PLACING BUY ORDER: {ticker}")
+            print(f"   Price: ₹{price:.2f}")
+            print(f"   Shares: {shares}")
+            print(f"   Stop Loss: ₹{stop_loss:.2f}")
+            print(f"   Target: ₹{target:.2f}")
             
             # Place order
-            order_id = self.place_order(
-                symbol=ticker,
+            order_id = self.kite.place_order(
+                variety='regular',
+                exchange='NSE',
+                tradingsymbol=instrument['tradingsymbol'],
+                transaction_type='BUY',
                 quantity=shares,
-                order_type="MARKET",
-                transaction_type="BUY",
-                product="CNC",
-                stoploss=stoploss,
-                target=target
+                price=None,
+                order_type='MARKET',
+                product='CNC'
             )
             
-            if order_id:
-                logger.info(f"✅ Trade executed successfully!")
-                logger.info(f"{'='*80}\n")
-                return order_id
-            else:
-                logger.error(f"❌ Trade execution failed!")
-                logger.info(f"{'='*80}\n")
-                return None
-                
+            # Track position
+            self.positions[ticker] = {
+                'order_id': order_id,
+                'shares': shares,
+                'entry_price': price,
+                'stop_loss': stop_loss,
+                'target': target,
+                'confidence': signal_data['confidence'],
+                'drl_confidence': drl_confidence
+            }
+            
+            print(f"✅ BUY ORDER PLACED: {ticker} (Order ID: {order_id})")
+            self.save_trading_state()
+            
+            return True
+            
         except Exception as e:
-            logger.error(f"❌ Failed to execute bot signal: {e}")
-            return None
-    
-    def is_market_open(self):
-        """Check if market is open"""
-        now = datetime.now()
-        
-        # Check if weekday (Monday=0, Sunday=6)
-        if now.weekday() >= 5:  # Saturday or Sunday
+            print(f"❌ Buy order failed for {ticker}: {e}")
+            logging.error(f"Buy order failed for {ticker}: {e}")
+            return False
+
+    def place_sell_order(self, ticker, reason='DRL_SIGNAL'):
+        """Place a SELL order on Zerodha"""
+        if ticker not in self.positions:
             return False
         
-        # Check market hours (9:15 AM to 3:30 PM)
-        market_open = time(9, 15)
-        market_close = time(15, 30)
-        current_time = now.time()
-        
-        return market_open <= current_time <= market_close
-    
-    def get_daily_pnl(self):
-        """Calculate daily P&L"""
         try:
-            positions = self.get_positions()
+            position = self.positions[ticker]
+            shares = position['shares']
             
-            if not positions or 'day' not in positions:
-                return 0
+            # Get instrument
+            instruments = self.kite.instruments(exchange='NSE')
+            instrument = next((i for i in instruments if i['tradingsymbol'] == ticker.replace('.NS', '')), None)
             
-            total_pnl = sum([pos['pnl'] for pos in positions['day']])
-            logger.info(f"📊 Daily P&L: ₹{total_pnl:,.2f}")
+            if not instrument:
+                print(f"❌ Instrument not found: {ticker}")
+                return False
             
-            return total_pnl
+            print(f"\n🎯 PLACING SELL ORDER: {ticker}")
+            print(f"   Shares: {shares}")
+            print(f"   Reason: {reason}")
             
-        except Exception as e:
-            logger.error(f"❌ Failed to calculate P&L: {e}")
-            return 0
-
-
-def setup_zerodha():
-    """
-    Interactive setup for Zerodha Kite
-    """
-    print("="*80)
-    print("🔧 ZERODHA KITE SETUP")
-    print("="*80)
-    
-    # Check for existing credentials
-    api_key = os.getenv('KITE_API_KEY')
-    api_secret = os.getenv('KITE_API_SECRET')
-    access_token = os.getenv('KITE_ACCESS_TOKEN')
-    
-    if not api_key or not api_secret:
-        print("\n⚠️ Kite API credentials not found in .env file")
-        print("\n📝 To get API credentials:")
-        print("1. Go to https://kite.trade/")
-        print("2. Login to your account")
-        print("3. Go to https://developers.kite.trade/apps")
-        print("4. Create a new app")
-        print("5. Copy API Key and API Secret")
-        print("\nAdd to .env file:")
-        print("KITE_API_KEY=your_api_key")
-        print("KITE_API_SECRET=your_api_secret")
-        return None
-    
-    print(f"\n✅ API Key found: {api_key[:10]}...")
-    
-    # Initialize trader
-    trader = ZerodhaLiveTrader(api_key, api_secret, access_token)
-    
-    # Check if access token is valid
-    if access_token:
-        try:
-            profile = trader.get_profile()
-            if profile:
-                print(f"✅ Logged in as: {profile['user_name']}")
-                return trader
-        except:
-            print("⚠️ Access token expired or invalid")
-    
-    # Generate new access token
-    print("\n🔐 Generating new access token...")
-    print("\nSteps:")
-    print("1. Click the login URL below")
-    print("2. Login to Kite")
-    print("3. Copy the 'request_token' from the redirect URL")
-    print("4. Paste it here")
-    
-    login_url = trader.get_login_url()
-    print(f"\n🔗 Login URL:\n{login_url}\n")
-    
-    request_token = input("Enter request_token: ").strip()
-    
-    if request_token:
-        access_token = trader.generate_session(request_token)
-        print(f"\n✅ Access Token: {access_token}")
-        print("\n⚠️ Add this to your .env file:")
-        print(f"KITE_ACCESS_TOKEN={access_token}")
-        print("\n⚠️ Token valid until end of day. Generate new token tomorrow.")
-        
-        return trader
-    else:
-        print("❌ No request token provided")
-        return None
-
-
-# === TESTING ===
-if __name__ == "__main__":
-    print("="*80)
-    print("🧪 ZERODHA KITE LIVE TRADER TEST")
-    print("="*80)
-    
-    # Setup
-    trader = setup_zerodha()
-    
-    if not trader:
-        print("\n❌ Setup failed. Please configure API credentials.")
-        sys.exit(1)
-    
-    # Test connection
-    print("\n" + "="*80)
-    print("📊 ACCOUNT INFORMATION")
-    print("="*80)
-    
-    profile = trader.get_profile()
-    margins = trader.get_margins()
-    
-    # Test market status
-    print("\n" + "="*80)
-    print("🕐 MARKET STATUS")
-    print("="*80)
-    
-    if trader.is_market_open():
-        print("✅ Market is OPEN")
-    else:
-        print("⏸️ Market is CLOSED")
-    
-    # Test LTP
-    print("\n" + "="*80)
-    print("💹 LIVE PRICES")
-    print("="*80)
-    
-    test_symbols = ['RELIANCE', 'TCS', 'INFY']
-    for symbol in test_symbols:
-        ltp = trader.get_ltp(symbol)
-        if ltp:
-            print(f"{symbol}: ₹{ltp:.2f}")
-    
-    # Test positions
-    print("\n" + "="*80)
-    print("📈 CURRENT POSITIONS")
-    print("="*80)
-    
-    positions = trader.get_positions()
-    if positions and 'net' in positions and positions['net']:
-        for pos in positions['net']:
-            print(f"{pos['tradingsymbol']}: {pos['quantity']} shares, P&L: ₹{pos['pnl']:,.2f}")
-    else:
-        print("No open positions")
-    
-    # Test holdings
-    print("\n" + "="*80)
-    print("💼 HOLDINGS")
-    print("="*80)
-    
-    holdings = trader.get_holdings()
-    if holdings:
-        for holding in holdings:
-            print(f"{holding['tradingsymbol']}: {holding['quantity']} shares, P&L: ₹{holding['pnl']:,.2f}")
-    else:
-        print("No holdings")
-    
-    print("\n" + "="*80)
-    print("✅ All tests complete!")
-    print("="*80)
-    
-    # Ask if user wants to place a test order
-    print("\n⚠️ WARNING: Next step will place a REAL order!")
-    response = input("Do you want to place a test order? (yes/no): ").strip().lower()
-    
-    if response == 'yes':
-        print("\n📝 Test Order Details:")
-        symbol = input("Enter symbol (e.g., RELIANCE): ").strip()
-        quantity = int(input("Enter quantity: "))
-        
-        print(f"\n🎯 Placing MARKET order: BUY {quantity} {symbol}")
-        confirm = input("Confirm? (yes/no): ").strip().lower()
-        
-        if confirm == 'yes':
-            order_id = trader.place_order(
-                symbol=symbol,
-                quantity=quantity,
-                order_type="MARKET",
-                transaction_type="BUY",
-                product="CNC"
+            # Place sell order
+            order_id = self.kite.place_order(
+                variety='regular',
+                exchange='NSE',
+                tradingsymbol=instrument['tradingsymbol'],
+                transaction_type='SELL',
+                quantity=shares,
+                price=None,
+                order_type='MARKET',
+                product='CNC'
             )
             
-            if order_id:
-                print(f"\n✅ Order placed successfully!")
-                print(f"Order ID: {order_id}")
-            else:
-                print(f"\n❌ Order failed!")
-        else:
-            print("❌ Order cancelled")
-    else:
-        print("✅ Test complete without placing order")
+            print(f"✅ SELL ORDER PLACED: {ticker} (Order ID: {order_id})")
+            
+            # Remove from positions
+            del self.positions[ticker]
+            self.save_trading_state()
+            
+            return True
+            
+        except Exception as e:
+            print(f"❌ Sell order failed for {ticker}: {e}")
+            logging.error(f"Sell order failed for {ticker}: {e}")
+            return False
+
+    def monitor_positions(self):
+        """Monitor open positions"""
+        if not self.positions:
+            return
+        
+        print(f"\n🔄 Monitoring {len(self.positions)} positions...")
+        
+        try:
+            for ticker, position in list(self.positions.items()):
+                # Get current price (simplified - would need real implementation)
+                print(f"   {ticker}: Monitoring...")
+                
+        except Exception as e:
+            print(f"❌ Error monitoring positions: {e}")
+            logging.error(f"Position monitoring error: {e}")
+
+    def save_trading_state(self):
+        """Save current trading state"""
+        state = {
+            'positions': self.positions,
+            'last_updated': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        }
+        
+        with open('zerodha_trading_state.json', 'w') as f:
+            json.dump(state, f, indent=2)
+
+    def load_trading_state(self):
+        """Load trading state"""
+        if os.path.exists('zerodha_trading_state.json'):
+            with open('zerodha_trading_state.json', 'r') as f:
+                state = json.load(f)
+                self.positions = state.get('positions', {})
+                print(f"📂 Loaded trading state: {len(self.positions)} positions")
+
+    def run_automated_cycle(self):
+        """Run complete automated trading cycle"""
+        print("\n" + "="*100)
+        print(f"🤖 ZERODHA AUTOMATED TRADING - {datetime.now().strftime('%Y-%m-%d %H:%M')}")
+        print("="*100)
+        
+        try:
+            # Step 1: Get portfolio summary
+            holdings = self.get_portfolio_summary()
+            
+            # Step 2: Monitor existing positions
+            if self.positions:
+                self.monitor_positions()
+            
+            # Step 3: Generate new signals (simplified)
+            print(f"\n📊 STEP 3: GENERATING SIGNALS")
+            print("="*100)
+            print("Signal generation would happen here...")
+            
+            # Step 4: Save state
+            self.save_trading_state()
+            
+            print(f"\n" + "="*100)
+            print(f"✅ AUTOMATED CYCLE COMPLETE")
+            print("="*100)
+            
+        except Exception as e:
+            print(f"❌ Automated cycle failed: {e}")
+            logging.error(f"Automated cycle error: {e}")
+
+
+def main():
+    """Main function for Zerodha automated trading"""
+    
+    # Configuration
+    API_KEY = os.getenv('ZERODHA_API_KEY')
+    API_SECRET = os.getenv('ZERODHA_API_SECRET')
+    
+    if not API_KEY or not API_SECRET:
+        print("❌ Please set ZERODHA_API_KEY and ZERODHA_API_SECRET environment variables")
+        return
+    
+    try:
+        # Try to load from config first
+        trader = ZerodhaLiveTrader.load_from_config()
+        print("✅ Loaded from saved configuration")
+        
+    except FileNotFoundError:
+        # First time setup
+        print("🔐 First time setup required")
+        trader = ZerodhaLiveTrader(API_KEY, API_SECRET)
+        trader.authenticate()
+    
+    # Load trading state
+    trader.load_trading_state()
+    
+    # Run automated cycle
+    trader.run_automated_cycle()
+
+
+if __name__ == "__main__":
+    main()

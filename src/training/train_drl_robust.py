@@ -22,12 +22,31 @@ print("="*100)
 print("🚀 NSE ALPHABOT - ROBUST DRL AGENT TRAINING")
 print("="*100)
 
-# Configuration
+# Configuration - COMPLETE NIFTY 100 STOCKS (Nifty 50 + Nifty Next 50)
 TRAINING_STOCKS = [
+    # === NIFTY 50 (50 stocks) ===
     'RELIANCE.NS', 'TCS.NS', 'HDFCBANK.NS', 'INFY.NS', 'ICICIBANK.NS',
-    'HINDUNILVR.NS', 'KOTAKBANK.NS', 'BHARTIARTL.NS', 'ITC.NS', 'ASIANPAINT.NS',
-    'SBIN.NS', 'AXISBANK.NS', 'LT.NS', 'TATAMOTORS.NS', 'TATASTEEL.NS',
-    'JSWSTEEL.NS', 'HINDALCO.NS', 'VEDL.NS', 'ADANIPORTS.NS', 'MARUTI.NS'
+    'HINDUNILVR.NS', 'BHARTIARTL.NS', 'ITC.NS', 'KOTAKBANK.NS', 'LT.NS',
+    'AXISBANK.NS', 'ASIANPAINT.NS', 'MARUTI.NS', 'SUNPHARMA.NS', 'TITAN.NS',
+    'ULTRACEMCO.NS', 'BAJFINANCE.NS', 'NESTLEIND.NS', 'WIPRO.NS', 'ADANIPORTS.NS',
+    'ONGC.NS', 'NTPC.NS', 'POWERGRID.NS', 'M&M.NS', 'TATAMOTORS.NS',
+    'TATASTEEL.NS', 'JSWSTEEL.NS', 'HINDALCO.NS', 'COALINDIA.NS', 'GRASIM.NS',
+    'INDUSINDBK.NS', 'BAJAJFINSV.NS', 'HCLTECH.NS', 'TECHM.NS', 'SBIN.NS',
+    'BPCL.NS', 'IOC.NS', 'DIVISLAB.NS', 'DRREDDY.NS', 'CIPLA.NS',
+    'EICHERMOT.NS', 'HEROMOTOCO.NS', 'BRITANNIA.NS', 'APOLLOHOSP.NS', 'TATACONSUM.NS',
+    'SBILIFE.NS', 'HDFCLIFE.NS', 'BAJAJ-AUTO.NS', 'SHREECEM.NS', 'ADANIENT.NS',
+    
+    # === NIFTY NEXT 50 (50 stocks) ===
+    'ADANIGREEN.NS', 'ADANIPOWER.NS', 'AMBUJACEM.NS', 'BANDHANBNK.NS', 'BERGEPAINT.NS',
+    'BEL.NS', 'BIOCON.NS', 'BOSCHLTD.NS', 'CHOLAFIN.NS', 'COLPAL.NS',
+    'CONCOR.NS', 'COFORGE.NS', 'DABUR.NS', 'DLF.NS', 'DMART.NS',
+    'GAIL.NS', 'GODREJCP.NS', 'GODREJPROP.NS', 'HAVELLS.NS', 'HDFCAMC.NS',
+    'ICICIPRULI.NS', 'IDEA.NS', 'IDFCFIRSTB.NS', 'IGL.NS', 'INDHOTEL.NS',
+    'INDIGO.NS', 'INDUSTOWER.NS', 'IRCTC.NS', 'JINDALSTEL.NS', 'JUBLFOOD.NS',
+    'LICHSGFIN.NS', 'LUPIN.NS', 'MARICO.NS', 'MFSL.NS', 'MOTHERSON.NS',
+    'MPHASIS.NS', 'MRF.NS', 'MUTHOOTFIN.NS', 'NAUKRI.NS', 'NMDC.NS',
+    'OFSS.NS', 'OIL.NS', 'PAGEIND.NS', 'PERSISTENT.NS', 'PETRONET.NS',
+    'PFC.NS', 'PIDILITIND.NS', 'PIIND.NS', 'PNB.NS', 'POLYCAB.NS'
 ]
 
 MODEL_DIR = "models"
@@ -215,14 +234,14 @@ def train_drl():
     
     print(f"\n🔧 DRL Configuration:")
     print(f"   Algorithm: SAC (Soft Actor-Critic)")
-    print(f"   Training timesteps: 100,000")
+    print(f"   Training timesteps: 200,000 (increased for Nifty 100)")
+    print(f"   Training stocks: All 100 Nifty 100 stocks (Nifty 50 + Nifty Next 50)")
     print(f"   Environment: Custom TradingEnv")
-    print(f"   Component weights: MTF 25%, SMC 25%, Tech 10%, Sentiment 10%, AI/ML 30%")
-    print(f"   AI/ML breakdown: Kronos 70% (21% total), DRL 30% (9% total)")
+    print(f"   Component weights: MTF 20%, SMC 20%, Tech 15%, Sentiment 10%, Kronos 25%, DRL 10%")
     
-    # Train SAC model
-    print(f"\n🔄 Training DRL Agent...")
-    print(f"   This will take 5-10 minutes...")
+    # Train SAC model with increased timesteps for better learning
+    print(f"\n🔄 Training DRL Agent on Nifty 100...")
+    print(f"   This will take 25-35 minutes with 100 stocks...")
     print(f"   Progress will be shown every 10 updates...")
     
     model = SAC(
@@ -239,10 +258,11 @@ def train_drl():
     )
     
     try:
-        model.learn(total_timesteps=100000, log_interval=10)
+        # Increased timesteps for better learning with more stocks
+        model.learn(total_timesteps=200000, log_interval=10)
         
-        # Save model
-        model_path = f"{MODEL_DIR}/sac_nse_retrained.zip"
+        # Save model with descriptive name
+        model_path = f"{MODEL_DIR}/sac_nse_nifty100.zip"
         model.save(model_path)
         
         print(f"\n💾 Model saved: {model_path}")
@@ -250,7 +270,8 @@ def train_drl():
         # Get file size
         size_mb = os.path.getsize(model_path) / (1024 * 1024)
         print(f"   Model size: {size_mb:.1f} MB")
-        print(f"   Training data: {len(combined_df):,} points from {len(all_dfs)} stocks")
+        print(f"   Training data: {len(combined_df):,} points from {len(all_dfs)} Nifty 100 stocks")
+        print(f"   Training stocks: All 100 Nifty 100 constituents (Nifty 50 + Nifty Next 50)")
         
         return model
         
@@ -279,11 +300,16 @@ if __name__ == "__main__":
             print(f"⏱️  Total time: {duration:.1f} minutes")
             print(f"⏰ Completed at: {end_time.strftime('%H:%M:%S')}")
             print(f"\n📦 Model saved:")
-            print(f"  {MODEL_DIR}/sac_nse_retrained.zip")
+            print(f"  {MODEL_DIR}/sac_nse_nifty100.zip")
+            print(f"\n🎯 Training Summary:")
+            print(f"  • Trained on ALL 100 Nifty 100 stocks (Nifty 50 + Nifty Next 50)")
+            print(f"  • 200,000 training timesteps")
+            print(f"  • 2x more data than Nifty 50 model")
+            print(f"  • Enhanced learning from top 100 Indian companies")
             print(f"\n🎯 Next steps:")
-            print(f"  1. Test the updated bot with new weights")
+            print(f"  1. Update bot to use new Nifty 100 model")
             print(f"  2. Run: python3 src/bot/nse_alphabot_ultimate.py")
-            print(f"  3. Compare performance with old weights")
+            print(f"  3. Compare performance with Nifty 50 model")
             print("="*100)
         else:
             print("\n" + "="*100)

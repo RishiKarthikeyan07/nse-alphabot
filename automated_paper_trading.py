@@ -39,15 +39,19 @@ class AutomatedPaperTrader:
         # Load DRL agent
         print("🤖 Loading DRL Agent for automated trading...")
         try:
-            self.drl_agent = SAC.load("models/sac_nse_retrained.zip")
-            print("✅ DRL Agent loaded successfully")
+            self.drl_agent = SAC.load("models/sac_nse_nifty100.zip")
+            print("✅ Nifty 100 DRL Agent loaded successfully")
         except:
             try:
-                self.drl_agent = SAC.load("models/sac_nse_10y_final.zip")
-                print("✅ DRL Agent loaded (original)")
+                self.drl_agent = SAC.load("models/sac_nse_retrained.zip")
+                print("✅ DRL Agent loaded (retrained)")
             except:
-                print("❌ DRL Agent not found!")
-                self.drl_agent = None
+                try:
+                    self.drl_agent = SAC.load("models/sac_nse_10y_final.zip")
+                    print("✅ DRL Agent loaded (original)")
+                except:
+                    print("❌ DRL Agent not found!")
+                    self.drl_agent = None
     
     def load_state(self):
         """Load existing paper trading state"""
