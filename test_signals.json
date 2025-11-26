@@ -1,0 +1,32 @@
+[
+  {
+    "timestamp": "2025-11-26 18:43:10",
+    "ticker": "RELIANCE.NS",
+    "signal": "BUY",
+    "confidence": 82.0,
+    "expected_return": 5.5,
+    "entry_price": 1569.9,
+    "stop_loss": 1526.66,
+    "target_1": 1613.07,
+    "target_2": 1634.82,
+    "target_3": 1656.24,
+    "stop_loss_pct": -2.75,
+    "target_1_pct": 2.75,
+    "target_2_pct": 4.14,
+    "target_3_pct": 5.5,
+    "risk_per_share": 43.24,
+    "risk_reward_ratio": 1.5,
+    "shares": 63,
+    "position_size": 98903.7,
+    "risk_amount": 2724.12,
+    "position_pct": 19.78,
+    "mtf_score": 0.85,
+    "smc_score": 0.75,
+    "tech_score": 0.7,
+    "sentiment_score": 0.6,
+    "kronos_score": 0.8,
+    "drl_score": 0.65,
+    "rsi": 76.4,
+    "volume_ratio": 1.4
+  }
+]
